@@ -18,12 +18,33 @@
     background-color: var(--background-color);
     color: var(--on-surface-color);
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #scroll-container {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+  }
+
+  .section {
+    height: 100vh;
+    scroll-snap-align: start;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    touch-action: none;
+    padding: 20px;
+  }
+
+  #hypnotic-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
   }
 
   h1 {
@@ -32,23 +53,57 @@
     margin-bottom: 20px;
     text-align: center;
     color: var(--secondary-color);
+    position: relative;
+    z-index: 1;
+  }
+
+  .content-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1200px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .left-column {
+    flex: 1;
+    min-width: 300px;
+    max-width: 600px;
+    margin-right: 20px;
+  }
+
+  .right-column {
+    flex: 1;
+    min-width: 300px;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   #canvas-container, #threeDContainer {
-    width: 90vw;
-    height: 90vw;
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%;
     max-width: 400px;
     max-height: 400px;
     margin-bottom: 20px;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
   }
 
-  #canvas {
+  #canvas, #threeDContainer canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--surface-color);
+    background-color: rgba(30, 30, 30, 0.7);
     touch-action: none;
   }
 
@@ -56,7 +111,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 90vw;
+    width: 100%;
     max-width: 400px;
   }
 
@@ -73,11 +128,11 @@
     transition: all 0.3s ease;
   }
 
-  input, select {
+  input[type="text"] {
     border-bottom: 2px solid var(--primary-color);
   }
 
-  input:focus, select:focus {
+  input[type="text"]:focus {
     outline: none;
     border-bottom-color: var(--secondary-color);
   }
@@ -100,43 +155,131 @@
     font-size: 1.1em;
     font-weight: 300;
     text-align: center;
-    width: 90vw;
+    width: 100%;
     max-width: 400px;
   }
 
   #colorPicker {
-    width: 100%;
-    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     margin-bottom: 10px;
+  }
+
+  .color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin: 5px;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+
+  .color-option.active {
+    border-color: var(--on-surface-color);
+  }
+
+  @media (max-width: 768px) {
+    .content-wrapper {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .left-column, .right-column {
+      margin-right: 0;
+      margin-bottom: 20px;
+    }
   }
 </style>
 </head>
 <body>
-  <h1>SigilCraft: Modern 3D Sigil Creator</h1>
-  
-  <div id="canvas-container">
-    <canvas id="canvas"></canvas>
+  <div id="scroll-container">
+    <canvas id="hypnotic-background"></canvas>
+    
+    <section class="section">
+      <h1>SigilCraft: Modern 3D Sigil Creator</h1>
+      
+      <div class="content-wrapper">
+        <div class="left-column">
+          <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+          </div>
+          
+          <div id="colorPicker">
+            <div class="color-option active" style="background-color: #03DAC6;" data-color="#03DAC6"></div>
+            <div class="color-option" style="background-color: #6200EE;" data-color="#6200EE"></div>
+            <div class="color-option" style="background-color: #FF0266;" data-color="#FF0266"></div>
+            <div class="color-option" style="background-color: #FFB300;" data-color="#FFB300"></div>
+            <div class="color-option" style="background-color: #00E676;" data-color="#00E676"></div>
+          </div>
+          
+          <div id="controls">
+            <input type="text" id="intentionInput" placeholder="Enter your intention">
+            <button id="createSigil">Create 3D Sigil</button>
+            <button id="clearCanvas">Clear Canvas</button>
+            <button id="releaseSigil">Release Sigil</button>
+          </div>
+          
+          <div id="intentionDisplay"></div>
+        </div>
+        
+        <div class="right-column">
+          <div id="threeDContainer"></div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="section">
+      <h2>How to Use</h2>
+      <ol>
+        <li>Enter your intention in the text field</li>
+        <li>Draw your sigil on the 2D canvas</li>
+        <li>Click "Create 3D Sigil" to see it come to life</li>
+        <li>Use "Release Sigil" to set your intention into the universe</li>
+      </ol>
+    </section>
   </div>
-  
-  <div id="controls">
-    <input type="text" id="intentionInput" placeholder="Enter your intention">
-    <select id="colorPicker">
-      <option value="#03DAC6">Teal</option>
-      <option value="#6200EE">Purple</option>
-      <option value="#FF0266">Pink</option>
-      <option value="#FFB400">Gold</option>
-      <option value="#00C853">Green</option>
-    </select>
-    <button id="createSigil">Create 3D Sigil</button>
-    <button id="clearCanvas">Clear Canvas</button>
-    <button id="releaseSigil">Release Sigil</button>
-  </div>
-  
-  <div id="intentionDisplay"></div>
-  
-  <div id="threeDContainer"></div>
 
   <script>
+    // Hypnotic background
+    const bgCanvas = document.getElementById('hypnotic-background');
+    const bgCtx = bgCanvas.getContext('2d');
+
+    function resizeBackground() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    }
+
+    resizeBackground();
+    window.addEventListener('resize', resizeBackground);
+
+    function drawSpiral() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      const centerX = bgCanvas.width / 2;
+      const centerY = bgCanvas.height / 2;
+      const maxRadius = Math.max(bgCanvas.width, bgCanvas.height);
+      
+      bgCtx.beginPath();
+      for (let i = 0; i < maxRadius; i += 10) {
+        const angle = 0.1 * i;
+        const x = centerX + i * Math.cos(angle + performance.now() * 0.001);
+        const y = centerY + i * Math.sin(angle + performance.now() * 0.001);
+        bgCtx.lineTo(x, y);
+      }
+      
+      const gradient = bgCtx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
+      gradient.addColorStop(0, 'rgba(98, 0, 238, 0.1)');
+      gradient.addColorStop(1, 'rgba(3, 218, 198, 0.1)');
+      
+      bgCtx.strokeStyle = gradient;
+      bgCtx.lineWidth = 2;
+      bgCtx.stroke();
+      
+      requestAnimationFrame(drawSpiral);
+    }
+
+    drawSpiral();
+
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const intentionInput = document.getElementById('intentionInput');
@@ -144,13 +287,13 @@
     const clearCanvasBtn = document.getElementById('clearCanvas');
     const releaseSigilBtn = document.getElementById('releaseSigil');
     const intentionDisplay = document.getElementById('intentionDisplay');
-    const colorPicker = document.getElementById('colorPicker');
+    const colorOptions = document.querySelectorAll('.color-option');
     
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;
     let points = [];
-    let currentColor = colorPicker.value;
+    let currentColor = '#03DAC6';
     
     // Set canvas size
     function resizeCanvas() {
@@ -161,16 +304,10 @@
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.lineWidth = 3;
-      ctx.strokeStyle = currentColor;
     }
     
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
-    
-    colorPicker.addEventListener('change', (e) => {
-      currentColor = e.target.value;
-      ctx.strokeStyle = currentColor;
-    });
     
     function getCoordinates(event) {
       const rect = canvas.getBoundingClientRect();
@@ -195,19 +332,20 @@
       isDrawing = true;
       const { x, y } = getCoordinates(e);
       [lastX, lastY] = [x, y];
-      points.push(new THREE.Vector3(x - canvas.width/2, -(y - canvas.height/2), 0));
+      points.push({ x: x - canvas.width/2, y: -(y - canvas.height/2), z: 0, color: currentColor });
     }
     
     function draw(e) {
       e.preventDefault();
       if (!isDrawing) return;
       const { x, y } = getCoordinates(e);
+      ctx.strokeStyle = currentColor;
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
       ctx.lineTo(x, y);
       ctx.stroke();
       [lastX, lastY] = [x, y];
-      points.push(new THREE.Vector3(x - canvas.width/2, -(y - canvas.height/2), 0));
+      points.push({ x: x - canvas.width/2, y: -(y - canvas.height/2), z: 0, color: currentColor });
     }
     
     function endDrawing(e) {
@@ -223,6 +361,15 @@
     canvas.addEventListener('touchstart', startDrawing);
     canvas.addEventListener('touchmove', draw);
     canvas.addEventListener('touchend', endDrawing);
+    
+    // Color picker
+    colorOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        colorOptions.forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+        currentColor = option.getAttribute('data-color');
+      });
+    });
     
     // Three.js setup
     const scene = new THREE.Scene();
@@ -259,8 +406,20 @@
         intentionDisplay.textContent = `Current Intention: ${intention}`;
         
         // Create 3D sigil
-        const material = new THREE.LineBasicMaterial({ color: currentColor });
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const geometry = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        
+        points.forEach(point => {
+          positions.push(point.x, point.y, point.z);
+          const color = new THREE.Color(point.color);
+          colors.push(color.r, color.g, color.b);
+        });
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        
+        const material = new THREE.LineBasicMaterial({ vertexColors: true });
         line = new THREE.Line(geometry, material);
         scene.clear();
         scene.add(line);
@@ -289,6 +448,48 @@
             intentionDisplay.textContent = '';
             intentionInput.value = '';
           });
+      }
+    });
+
+    // Smooth scrolling
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+
+    // Scroll-based animations
+    const scrollContainer = document.getElementById('scroll-container');
+    scrollContainer.addEventListener('scroll', () => {
+      const scrollPosition = scrollContainer.scrollTop;
+      const windowHeight = window.innerHeight;
+
+      document.querySelectorAll('.section').forEach((section, index) => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.offsetHeight;
+
+        if (scrollPosition > sectionTop - windowHeight / 2 && 
+            scrollPosition < sectionTop + sectionHeight - windowHeight / 2) {
+          section.style.opacity = 1;
+          section.style.transform = 'translateY(0)';
+        } else {
+          section.style.opacity = 0;
+          section.style.transform = 'translateY(50px)';
+        }
+      });
+    });
+
+    // Initialize section visibility
+    document.querySelectorAll('.section').forEach((section, index) => {
+      if (index === 0) {
+        section.style.opacity = 1;
+        section.style.transform = 'translateY(0)';
+      } else {
+        section.style.opacity = 0;
+        section.style.transform = 'translateY(50px)';
       }
     });
   </script>
