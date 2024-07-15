@@ -34,18 +34,39 @@
     color: var(--secondary-color);
   }
 
+  .content-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .left-column, .right-column {
+    flex: 1;
+    min-width: 300px;
+    max-width: 600px;
+    margin: 0 10px 20px;
+  }
+
   #canvas-container, #threeDContainer {
-    width: 90vw;
-    height: 90vw;
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%;
     max-width: 400px;
     max-height: 400px;
     margin-bottom: 20px;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
   }
 
-  #canvas {
+  #canvas, #threeDContainer canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     background-color: var(--surface-color);
@@ -56,11 +77,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 90vw;
+    width: 100%;
     max-width: 400px;
   }
 
-  input, button, select {
+  input, button {
     margin: 10px 0;
     padding: 12px;
     font-size: 1em;
@@ -73,11 +94,11 @@
     transition: all 0.3s ease;
   }
 
-  input, select {
+  input {
     border-bottom: 2px solid var(--primary-color);
   }
 
-  input:focus, select:focus {
+  input:focus {
     outline: none;
     border-bottom-color: var(--secondary-color);
   }
@@ -100,41 +121,55 @@
     font-size: 1.1em;
     font-weight: 300;
     text-align: center;
-    width: 90vw;
+    width: 100%;
     max-width: 400px;
   }
 
-  #colorPicker {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
+  @media (max-width: 768px) {
+    .content-wrapper {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .left-column, .right-column {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 0 20px;
+    }
+
+    h1 {
+      font-size: 1.5em;
+    }
+
+    input, button {
+      font-size: 0.9em;
+    }
   }
 </style>
 </head>
 <body>
   <h1>SigilCraft: Modern 3D Sigil Creator</h1>
   
-  <div id="canvas-container">
-    <canvas id="canvas"></canvas>
+  <div class="content-wrapper">
+    <div class="left-column">
+      <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+      
+      <div id="controls">
+        <input type="text" id="intentionInput" placeholder="Enter your intention">
+        <button id="createSigil">Create 3D Sigil</button>
+        <button id="clearCanvas">Clear Canvas</button>
+        <button id="releaseSigil">Release Sigil</button>
+      </div>
+      
+      <div id="intentionDisplay"></div>
+    </div>
+    
+    <div class="right-column">
+      <div id="threeDContainer"></div>
+    </div>
   </div>
-  
-  <div id="controls">
-    <input type="text" id="intentionInput" placeholder="Enter your intention">
-    <select id="colorPicker">
-      <option value="#03DAC6">Teal</option>
-      <option value="#6200EE">Purple</option>
-      <option value="#FF0266">Pink</option>
-      <option value="#FFB400">Gold</option>
-      <option value="#00C853">Green</option>
-    </select>
-    <button id="createSigil">Create 3D Sigil</button>
-    <button id="clearCanvas">Clear Canvas</button>
-    <button id="releaseSigil">Release Sigil</button>
-  </div>
-  
-  <div id="intentionDisplay"></div>
-  
-  <div id="threeDContainer"></div>
 
   <script>
     const canvas = document.getElementById('canvas');
@@ -144,32 +179,34 @@
     const clearCanvasBtn = document.getElementById('clearCanvas');
     const releaseSigilBtn = document.getElementById('releaseSigil');
     const intentionDisplay = document.getElementById('intentionDisplay');
-    const colorPicker = document.getElementById('colorPicker');
     
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;
     let points = [];
-    let currentColor = colorPicker.value;
     
-    // Set canvas size
     function resizeCanvas() {
       const container = document.getElementById('canvas-container');
       const size = container.offsetWidth;
       canvas.width = size;
       canvas.height = size;
+      ctx.strokeStyle = '#03DAC6';
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.lineWidth = 3;
-      ctx.strokeStyle = currentColor;
     }
     
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    function resizeRenderer() {
+      const container = document.getElementById('threeDContainer');
+      const size = container.offsetWidth;
+      renderer.setSize(size, size);
+      camera.aspect = 1;
+      camera.updateProjectionMatrix();
+    }
     
-    colorPicker.addEventListener('change', (e) => {
-      currentColor = e.target.value;
-      ctx.strokeStyle = currentColor;
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      resizeRenderer();
     });
     
     function getCoordinates(event) {
@@ -229,19 +266,11 @@
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ alpha: true });
     
-    function resizeRenderer() {
-      const container = document.getElementById('threeDContainer');
-      const size = container.offsetWidth;
-      renderer.setSize(size, size);
-    }
-    
-    resizeRenderer();
-    window.addEventListener('resize', resizeRenderer);
-    
     document.getElementById('threeDContainer').appendChild(renderer.domElement);
     
     camera.position.z = 250;
     
+    const material = new THREE.LineBasicMaterial({ color: 0x03DAC6 });
     let line;
     
     function animate() {
@@ -251,7 +280,6 @@
       }
       renderer.render(scene, camera);
     }
-    animate();
     
     createSigilBtn.addEventListener('click', () => {
       const intention = intentionInput.value.trim();
@@ -259,7 +287,6 @@
         intentionDisplay.textContent = `Current Intention: ${intention}`;
         
         // Create 3D sigil
-        const material = new THREE.LineBasicMaterial({ color: currentColor });
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         line = new THREE.Line(geometry, material);
         scene.clear();
@@ -291,6 +318,11 @@
           });
       }
     });
+
+    // Initial setup
+    resizeCanvas();
+    resizeRenderer();
+    animate();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 </body></html>
