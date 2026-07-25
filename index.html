@@ -191,6 +191,21 @@
     .seg:hover { color: var(--ink); background: rgba(var(--accent-rgb), 0.1); }
     .seg.active { background: rgba(var(--accent-rgb), 0.16); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.4); }
 
+    /* Letter-method (traditional sigil) bar */
+    .head-tools { display: flex; gap: 6px; }
+    .letter-bar { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 16px; background: var(--field); border: 1px solid var(--field-brd); }
+    .letter-bar[hidden] { display: none; }
+    .letter-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .lf-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-faint); flex: none; }
+    .letter-chips { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-family: 'Cormorant Garamond', serif; line-height: 1; }
+    .lc { display: inline-grid; place-items: center; min-width: 24px; height: 26px; padding: 0 6px; border-radius: 8px; font-size: 1.05rem; transition: background 0.3s; }
+    .lc.src { color: var(--ink-soft); background: var(--field); border: 1px solid var(--field-brd); }
+    .lc.gone { color: var(--ink-faint); text-decoration: line-through; opacity: 0.5; }
+    .lc.arrow { color: var(--ink-faint); font-size: 0.95rem; }
+    .lc.keep { color: #04120f; font-weight: 600; background: var(--accent); box-shadow: 0 0 12px -2px var(--accent); }
+    .letter-hint { color: var(--ink-faint); font-style: italic; font-family: 'Cormorant Garamond', serif; }
+    .stage-hint b { color: var(--accent); font-weight: 600; }
+
     .swatches { display: flex; gap: 6px; padding: 5px 8px; }
     .swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
       transition: transform 0.2s, border-color 0.2s; box-shadow: 0 0 10px -2px currentColor; }
@@ -299,7 +314,10 @@
     <section class="panel" aria-label="Drawing">
       <div class="panel-head">
         <div class="panel-title"><span class="step">i.</span><h2>Trace the Sigil</h2></div>
-        <button id="gridToggle" class="seg active" title="Toggle guide">Guides</button>
+        <div class="head-tools">
+          <button id="letterToggle" class="seg" title="Distill your intention into letters and conjure a sigil (Spare's method)">✶ Letter Sigil</button>
+          <button id="gridToggle" class="seg active" title="Toggle guide">Guides</button>
+        </div>
       </div>
       <div class="panel-body">
         <div class="stage" id="draw-stage">
@@ -308,7 +326,18 @@
           <div class="stage-hint" id="drawHint">Trace a line, a rune, anything.<br>Symmetry will make it whole.</div>
         </div>
 
-        <div class="toolbar">
+        <div class="letter-bar" id="letterBar" hidden>
+          <div class="letter-flow">
+            <span class="lf-label">Letter method</span>
+            <div class="letter-chips" id="letterChips" aria-live="polite"></div>
+          </div>
+          <button class="btn btn-primary conjure" id="conjureBtn" style="flex:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.77 7.82 21 9 14.14l-5-4.87 5.91-.01z" stroke-linejoin="round"/></svg>
+            Conjure from letters
+          </button>
+        </div>
+
+        <div class="toolbar" id="symTools">
           <div class="tool-group" role="group" aria-label="Mirror symmetry">
             <span class="lbl">Symmetry</span>
             <button class="seg" data-sym="1">1</button>
@@ -778,7 +807,115 @@
     }
 
     function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    intentionInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('createSigil').click(); });
+    intentionInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      if (letterMode) conjure(); else document.getElementById('createSigil').click();
+    });
+
+    /* ───────────────────────── letter method (Spare's technique) ───────────────────────── */
+    const letterToggle = document.getElementById('letterToggle');
+    const letterBar = document.getElementById('letterBar');
+    const letterChips = document.getElementById('letterChips');
+    const conjureBtn = document.getElementById('conjureBtn');
+    const symTools = document.getElementById('symTools');
+    let letterMode = false;
+
+    function setSymmetry(n) {
+      symmetry = n;
+      document.querySelectorAll('[data-sym]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sym, 10) === n));
+    }
+    function setMirror(on) {
+      mirror = on;
+      document.getElementById('mirrorToggle').classList.toggle('active', on);
+    }
+
+    // Distil a phrase the traditional way: strip non-letters, drop vowels, drop repeats.
+    function reduceLetters(text) {
+      const clean = (text || '').toUpperCase().replace(/[^A-Z]/g, '');
+      const seen = new Set();
+      const kept = [];
+      const marks = [];
+      for (const ch of clean) {
+        if ('AEIOU'.includes(ch)) marks.push({ ch, cls: 'gone' });
+        else if (seen.has(ch)) marks.push({ ch, cls: 'gone' });
+        else { seen.add(ch); kept.push(ch); marks.push({ ch, cls: 'src' }); }
+      }
+      return { clean, marks, kept };
+    }
+
+    function renderChips() {
+      const { clean, marks, kept } = reduceLetters(intentionInput.value);
+      if (!clean) { letterChips.innerHTML = '<span class="letter-hint">Name your intention to see it distilled…</span>'; return; }
+      const result = kept.length ? kept : Array.from(new Set(clean.split('')));
+      const chip = (c, cls) => '<span class="lc ' + cls + '">' + c + '</span>';
+      letterChips.innerHTML =
+        marks.map(m => chip(m.ch, m.cls)).join('') +
+        '<span class="lc arrow">→</span>' +
+        result.map(c => chip(c, 'keep')).join('');
+    }
+
+    function circlePts(cx, cy, r) {
+      const p = [];
+      for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2; p.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r }); }
+      return p;
+    }
+
+    // Build an abstract glyph loosely from the surviving letters:
+    // each letter → a node on a spiral placed by its alphabet value; connect them,
+    // mark the start with a node, cap the end with a bar, and enclose it all in a circle.
+    function conjure() {
+      const raw = intentionInput.value.trim();
+      if (!raw) { toast('Name your intention first ✦'); intentionInput.focus(); return; }
+      const { clean, kept } = reduceLetters(raw);
+      const letters = kept.length ? kept : Array.from(new Set(clean.split('')));
+      if (!letters.length) { toast('Add some letters to your intention'); return; }
+
+      setSymmetry(1); setMirror(false);        // a true glyph, not a mandala
+      strokes.length = 0; current = null;
+
+      const half = cssSize() / 2;
+      const R = half * 0.72;
+      const nodes = letters.map((ch, i) => {
+        const v = ch.charCodeAt(0) - 65;                     // 0..25
+        const ang = (v / 26) * Math.PI * 2 + i * 0.55 - Math.PI / 2;
+        const rad = R * (0.4 + 0.6 * (v / 25));
+        return { x: Math.cos(ang) * rad, y: Math.sin(ang) * rad };
+      });
+
+      // main path through the letters
+      if (nodes.length >= 2) strokes.push(nodes.map(p => ({ x: p.x, y: p.y })));
+      else strokes.push([{ x: 0, y: 0 }, { x: nodes[0].x, y: nodes[0].y }]);
+
+      // emphasised start node
+      strokes.push(circlePts(nodes[0].x, nodes[0].y, half * 0.05));
+
+      // perpendicular end bar
+      const a = nodes[nodes.length - 1];
+      const b = nodes.length >= 2 ? nodes[nodes.length - 2] : { x: 0, y: 0 };
+      let dx = a.x - b.x, dy = a.y - b.y;
+      const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      const bar = half * 0.11;
+      strokes.push([{ x: a.x - dy * bar, y: a.y + dx * bar }, { x: a.x + dy * bar, y: a.y - dx * bar }]);
+
+      // enclosing circle
+      strokes.push(circlePts(0, 0, R * 1.05));
+
+      redraw();
+      announce('Sigil generated from letters ' + letters.join(' '));
+      toast('Conjured from ' + letters.join('·') + ' ✦');
+    }
+
+    letterToggle.addEventListener('click', () => {
+      letterMode = letterToggle.classList.toggle('active');
+      letterBar.hidden = !letterMode;
+      symTools.style.display = letterMode ? 'none' : '';
+      drawHint.innerHTML = letterMode
+        ? 'Name your intention, then <b>Conjure</b>.<br>Vowels &amp; repeats fall away.'
+        : 'Trace a line, a rune, anything.<br>Symmetry will make it whole.';
+      if (letterMode) { setSymmetry(1); setMirror(false); renderChips(); }
+    });
+    conjureBtn.addEventListener('click', conjure);
+    intentionInput.addEventListener('input', () => { if (letterMode) renderChips(); });
 
     /* ───────────────────────── resize ───────────────────────── */
     function resizeAll() { initStars(); sizeCanvas(); sizeRenderer(); }
